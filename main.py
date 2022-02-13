@@ -22,7 +22,7 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-    return {"data": "Welcome to Stock Picker API. You can find more info about this api by contacting "
+    return {"data": "This is a private API. You can find more info about this api by contacting "
                     "me at github.com/platoputhur"}
 
 
