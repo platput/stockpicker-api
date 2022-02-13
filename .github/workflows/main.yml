@@ -43,7 +43,7 @@ jobs:
             cd stockpickerapi
             . ./venv/bin/activate
             pip install -r requirements.txt
+            echo ${{ secrets.POSTGRES_DB_URL }} > .env
             alembic upgrade head
-            echo ${{ secrets.KEY }} > .env
             sudo systemctl restart gunicorn
 
