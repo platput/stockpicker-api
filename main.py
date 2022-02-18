@@ -1,11 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import data_scrapping
+from routers import data_scraping
 from managers.log_manager import LogManager
 
 app = FastAPI()
 LogManager.setup()
-app.include_router(data_scrapping.router)
+app.include_router(data_scraping.router)
 
 # List of domains from which we have to enable cors requests
 origins = ["*"]

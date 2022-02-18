@@ -4,7 +4,7 @@ from helpers.constants import Constants
 import logging
 
 from managers.bal.data_manager import DataManager
-from managers.dal.price_action_data_manager import PriceActionDataManager
+from managers.bal.price_action_data_manager import PriceActionDataManager
 from models.schemas.responses import ScrapeMCResponse
 
 
