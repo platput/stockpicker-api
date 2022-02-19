@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import select
 
 from models.db.schema import PriceAction, StockName, ShortlistedStock
-from models.schemas.responses import ShortListResponse
+from models.schemas.responses import ShortListResponse, ShortListedStock, ShortListedStocksResponse, PriceActions as PriceActionsORM
 
 
 class ShortListManager:
@@ -18,6 +18,53 @@ class ShortListManager:
 
     def __init__(self, db_connection):
         self.db_connection = db_connection
+
+    def fetch_latest_short_list(self):
+        """
+        Fetch the latest shortlist from the database
+        :return:
+        """
+        try:
+            stmt = select(ShortlistedStock).limit(1).order_by(ShortlistedStock.conditions_met_on.desc())
+            short_listed_stock = self.db_connection.execute(stmt).scalar()
+            if short_listed_stock:
+                latest_date = short_listed_stock.conditions_met_on
+                latest_short_list_stmt = select(ShortlistedStock, StockName).where(
+                    ShortlistedStock.conditions_met_on == latest_date,
+                    StockName.id == ShortlistedStock.stock_id
+                )
+                short_listed_stocks_resp = []
+                for short_list, stock in self.db_connection.execute(latest_short_list_stmt):
+                    price_actions = []
+                    price_action_ids = short_list.price_action_ids
+                    for price_action_id in price_action_ids:
+                        price_action = self.db_connection.execute(select(PriceAction).where(
+                            PriceAction.id == price_action_id
+                        )).scalar()
+                        price_actions.append(PriceActionsORM.from_orm(price_action))
+                    short_listed_stock_resp = ShortListedStock(
+                        stock_name=stock.stock_name,
+                        price_actions=price_actions
+                    )
+                    short_listed_stocks_resp.append(short_listed_stock_resp)
+                return ShortListedStocksResponse(
+                    success=True,
+                    message="Shortlisted stocks fetched successfully",
+                    shortlisted_stocks=short_listed_stocks_resp
+                )
+            else:
+                return ShortListedStocksResponse(
+                    success=False,
+                    message="Failed to get the latest shortlist.",
+                    shortlisted_stocks=[]
+                )
+        except Exception as e:
+            logging.error(f'Error while fetching the short list for the day: {str(datetime.now())} Error: {type(e)}')
+            return ShortListedStocksResponse(
+                success=False,
+                message="Failed to get the latest shortlist.",
+                shortlisted_stocks=[]
+            )
 
     def create_short_list(self):
         """
@@ -31,8 +78,10 @@ class ShortListManager:
         # Get the list of stock names and their price actions for day_minus_one
         try:
             stock_names_day_one, day_one = self.__get_stocks_for_the_day(current_date)
-            stock_names_day_two, day_two = self.__get_stocks_for_the_day(day_one)
-            stock_names_day_three, day_three = self.__get_stocks_for_the_day(day_two)
+            next_date = day_one - timedelta(days=1)
+            stock_names_day_two, day_two = self.__get_stocks_for_the_day(next_date)
+            next_date = day_two - timedelta(days=1)
+            stock_names_day_three, day_three = self.__get_stocks_for_the_day(next_date)
             stocks_present_in_last_three_days = stock_names_day_one. \
                 intersection(stock_names_day_two). \
                 intersection(stock_names_day_three)
@@ -71,19 +120,17 @@ class ShortListManager:
                     # 3. If the start price for the day_two is less than or equal to the end price for the day_two
                     # 4. If the end price for the day_two is less than or equal to the start price for the day_one
                     # 5. If the start price for the day_one is less than or equal to the end price for the day_one
-                    if price_action_list_day_three[0].get("start", 0) <= \
-                            price_action_list_day_three[-1].get("end", 0) <= \
-                            price_action_list_day_two[0].get("start", 0) <= \
-                            price_action_list_day_two[0].get("end", 0) <= \
-                            price_action_list_day_one[0].get("start", 0) <= \
-                            price_action_list_day_one[0].get("end", 0):
+                    if price_action_list_day_one[-1].get("end") >= price_action_list_day_one[0].get("start") >= \
+                            price_action_list_day_two[-1].get("end") >= price_action_list_day_two[0].get("start") >= \
+                            price_action_list_day_three[-1].get("end") >= price_action_list_day_three[0].get("start"):
                         short_listed_stocks.append(stock)
                         # Save shortlisted stocks into db
                         short_list_stock = ShortlistedStock(
                             id=uuid.uuid4(),
                             stock_id=price_action_one.stock_id,
-                            price_action_ids=[str(price_action_one.id), str(price_action_two.id), str(price_action_three.id)],
-                            conditions_met_on=current_date,
+                            price_action_ids=[str(price_action_one.id), str(price_action_two.id),
+                                              str(price_action_three.id)],
+                            conditions_met_on=price_action_one.price_date,
                         )
                         self.db_connection.add(short_list_stock)
             self.db_connection.commit()
@@ -121,7 +168,6 @@ class ShortListManager:
             if iteration_count > 10:
                 logging.getLogger().error("The stock market has remained closed for 10 days.")
                 break
-            current_date = (current_date - timedelta(days=1))
             stmt_one = select(StockName, PriceAction).where(
                 StockName.id == PriceAction.stock_id,
                 PriceAction.price_date == current_date.strftime('%Y-%m-%d')
@@ -130,6 +176,8 @@ class ShortListManager:
                 stock_names_day.add(stock.stock_name)
             if len(stock_names_day) > 0:
                 break
+            else:
+                current_date = current_date - timedelta(days=1)
         return stock_names_day, current_date
 
     @staticmethod

@@ -1,14 +1,12 @@
 from datetime import datetime, date
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+from uuid import UUID
 
 # Schema for money control data
 from typing import List
 from decimal import Decimal
-
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy_utils.types import uuid
 
 
 class MCDataDetails(BaseModel):
@@ -35,27 +33,42 @@ class ShortListResponse(BaseModel):
     message: str
 
 
-class PriceActionTimePeriod(Enum):
-    NINE_TO_TEN = 1
-    TEN_TO_ELEVEN = 2
-    ELEVEN_TO_TWELVE = 3
-    TWELVE_TO_ONE = 4
-    ONE_TO_TWO = 5
-    TWO_TO_THREE = 6
-    THREE_TO_FOUR = 7
-
-
 class StockPrice(BaseModel):
     stock_start_price: Decimal
     stock_end_price: Decimal
 
 
 class PriceActions(BaseModel):
-    price_action_date: date
-    price_action_time_period: PriceActionTimePeriod
-    stock_price: StockPrice
+    id: UUID
+    stock_id: UUID
+    price_date: date
+    hour_1_start: Decimal
+    hour_1_end: Decimal
+    hour_2_start: Decimal
+    hour_2_end: Decimal
+    hour_3_start: Decimal
+    hour_3_end: Decimal
+    hour_4_start: Decimal
+    hour_4_end: Decimal
+    hour_5_start: Decimal
+    hour_5_end: Decimal
+    hour_6_start: Decimal
+    hour_6_end: Decimal
+    hour_7_start: Decimal
+    hour_7_end: Decimal
+    created_at: datetime
+
+    class Config:
+        orm_mode = True
+        arbitrary_types_allowed = True
 
 
-class ShortListedStocks(BaseModel):
+class ShortListedStock(BaseModel):
     stock_name: str
     price_actions: List[PriceActions]
+
+
+class ShortListedStocksResponse(BaseModel):
+    success: bool
+    message: str
+    shortlisted_stocks: List[ShortListedStock]
