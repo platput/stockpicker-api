@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from typing import List
 from decimal import Decimal
 
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy_utils.types import uuid
 
 
@@ -50,13 +51,11 @@ class StockPrice(BaseModel):
 
 
 class PriceActions(BaseModel):
-    price_action_id: uuid
     price_action_date: date
     price_action_time_period: PriceActionTimePeriod
     stock_price: StockPrice
 
 
 class ShortListedStocks(BaseModel):
-    stock_id: uuid
     stock_name: str
     price_actions: List[PriceActions]

@@ -26,4 +26,10 @@ autorestart=true
 stderr_logfile=/home/ubuntu/stockpickerapi/gunicorn.err.log
 ```
 
+## DB commands for dev env
+- `sudo -u postgres pg_dump -c stockpicker > 19feb2022.sql`
+- `scp -i privatekey.pem user@domain.com:./filename.ext filename.ext
+  19feb2022.sql`
+- `psql dbname -U dbuser < dbfile.sql`
+
 

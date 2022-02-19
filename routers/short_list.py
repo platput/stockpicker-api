@@ -13,9 +13,9 @@ router = APIRouter(
 
 @router.get("/create", response_model=ShortListResponse)
 def create_short_list(db: Session = Depends(get_db)):
-    short_list_manager = ShortListManager()
+    short_list_manager = ShortListManager(db)
     try:
-        response_data = short_list_manager.create_short_list(db_session=db)
+        response_data = short_list_manager.create_short_list()
         return response_data
     except (ConnectionError, AttributeError) as ce:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
