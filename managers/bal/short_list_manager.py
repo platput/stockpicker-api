@@ -137,7 +137,7 @@ class ShortListManager:
             logging.info('Short list created for the day: {}'.format(current_date))
             return ShortListResponse(
                 success=True,
-                message=f"Successfully created the shortlist for the day: {str(current_date + timedelta(days=1))}. "
+                message=f"Successfully created the shortlist with the data up to: {str(current_date)}."
                         f"Shortlisted {len(short_listed_stocks)} stocks",
             )
         except IntegrityError as e:
