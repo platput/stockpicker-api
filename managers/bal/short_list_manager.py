@@ -19,22 +19,21 @@ class ShortListManager:
     def __init__(self, db_connection):
         self.db_connection = db_connection
 
-    def fetch_latest_short_list(self):
+    def fetch_short_list(self, offset=0):
         """
         Fetch the latest shortlist from the database
         :return:
         """
         try:
-            stmt = select(ShortlistedStock).limit(1).order_by(ShortlistedStock.conditions_met_on.desc())
-            short_listed_stock = self.db_connection.execute(stmt).scalar()
-            if short_listed_stock:
-                latest_date = short_listed_stock.conditions_met_on
-                latest_short_list_stmt = select(ShortlistedStock, StockName).where(
-                    ShortlistedStock.conditions_met_on == latest_date,
+            stmt = select(ShortlistedStock.conditions_met_on).distinct().limit(1).offset(offset).order_by(ShortlistedStock.conditions_met_on.desc())
+            date_for_short_list = self.db_connection.execute(stmt).scalar()
+            if date_for_short_list:
+                short_list_stmt = select(ShortlistedStock, StockName).where(
+                    ShortlistedStock.conditions_met_on == date_for_short_list,
                     StockName.id == ShortlistedStock.stock_id
                 )
                 short_listed_stocks_resp = []
-                for short_list, stock in self.db_connection.execute(latest_short_list_stmt):
+                for short_list, stock in self.db_connection.execute(short_list_stmt):
                     price_actions = []
                     price_action_ids = short_list.price_action_ids
                     for price_action_id in price_action_ids:
@@ -55,14 +54,14 @@ class ShortListManager:
             else:
                 return ShortListedStocksResponse(
                     success=False,
-                    message="Failed to get the latest shortlist.",
+                    message="Failed to get the shortlist.",
                     shortlisted_stocks=[]
                 )
         except Exception as e:
             logging.error(f'Error while fetching the short list for the day: {str(datetime.now())} Error: {type(e)}')
             return ShortListedStocksResponse(
                 success=False,
-                message="Failed to get the latest shortlist.",
+                message="Failed to get the shortlist.",
                 shortlisted_stocks=[]
             )
 
