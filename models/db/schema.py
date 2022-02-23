@@ -9,6 +9,8 @@ class StockName(Base):
 
     id = Column(Integer, primary_key=True, nullable=True)
     stock_name = Column(String, nullable=False)
+    details_url = Column(String, nullable=False)
+    sector_id = Column(Integer, nullable=False)
     created_at = Column(TIMESTAMP, nullable=False, server_default=text('now()'))
 
 
@@ -45,3 +47,11 @@ class ShortlistedStock(Base):
     conditions_met_on = Column(DATE, nullable=False)
     created_at = Column(TIMESTAMP, nullable=False, server_default=text('now()'))
     __table_args__ = (UniqueConstraint('stock_id', 'conditions_met_on', name='_shortlisted_date_uc'),)
+
+
+class Sector(Base):
+    __tablename__ = "sectors"
+
+    id = Column(Integer, primary_key=True, nullable=True)
+    sector_name = Column(String, nullable=False)
+    created_at = Column(TIMESTAMP, nullable=False, server_default=text('now()'))
