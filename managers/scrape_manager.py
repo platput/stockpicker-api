@@ -84,7 +84,9 @@ class ScrapeManager:
                     Constants.SECTOR_URL: sector_url,
                 }
             else:
-                print(f"Couldn't get sector details for {stock_details_url}. Error: {response.status_code}")
+                logging.getLogger().warning(
+                    f"Couldn't get sector details for {stock_details_url}. Error: {response.status_code}"
+                )
                 return {
                     Constants.SECTOR_NAME: None,
                     Constants.SECTOR_URL: None,
