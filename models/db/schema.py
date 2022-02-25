@@ -54,4 +54,5 @@ class Sector(Base):
 
     id = Column(Integer, primary_key=True, nullable=True)
     sector_name = Column(String, nullable=False)
+    sector_url = Column(String, nullable=True)
     created_at = Column(TIMESTAMP, nullable=False, server_default=text('now()'))

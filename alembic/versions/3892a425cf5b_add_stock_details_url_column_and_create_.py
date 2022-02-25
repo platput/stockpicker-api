@@ -23,15 +23,16 @@ def upgrade():
     op.create_table('sectors',
                     sa.Column('id', UUIDType(binary=False), nullable=False, default=uuid.uuid4()),
                     sa.Column('sector_name', sa.String(), nullable=False, unique=True),
+                    sa.Column('sector_url', sa.String(), nullable=False, unique=True),
                     sa.Column('created_at', sa.TIMESTAMP(), server_default=sa.text('now()'), nullable=False),
                     sa.PrimaryKeyConstraint('id'),
                     )
 
-    op.add_column('stock_names', Column('sector_id', UUIDType(binary=False), ForeignKey('sectors.id')))
-    op.add_column('stock_names', Column('details_url', sa.String()))
+    op.add_column('stock_names', Column('sector_id', UUIDType(binary=False), ForeignKey('sectors.id'), nullable=True))
+    op.add_column('stock_names', Column('details_url', sa.String(), nullable=True))
 
 
 def downgrade():
     op.drop_column('stock_names', 'details_url')
-    op.drop_column('op.', 'sector_id')
+    op.drop_column('stock_names', 'sector_id')
     op.drop_table('sectors')

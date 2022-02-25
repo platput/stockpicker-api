@@ -9,6 +9,11 @@ class Constants:
     STOCK_NAME = "stock_name"
     STOCK_DETAILS = "stock_details"
     DATE = "date"
+    PRICE_ACTION = "price_action"
+    TIME_ZONE = 'Asia/Kolkata'
+    STOCK_DETAILS_URL = "stock_details_url"
+    SECTOR_NAME = "sector_name"
+    SECTOR_URL = "sector_url"
 
     # BS4 Specific
     USER_AGENT = {'User-Agent': 'Mozilla/5.0'}
