@@ -65,6 +65,9 @@ class PriceActions(BaseModel):
 
 class ShortListedStock(BaseModel):
     stock_name: str
+    stock_url: str
+    stock_sector_name: str
+    stock_sector_url: str
     price_actions: List[PriceActions]
 
 
