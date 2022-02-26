@@ -32,10 +32,9 @@ class ShortListManager:
                 latest_short_list_stmt = select(ShortlistedStock, StockName, Sector).where(
                     ShortlistedStock.conditions_met_on == latest_date,
                     StockName.id == ShortlistedStock.stock_id,
-                    Sector.id == StockName.sector_id
-                )
+                ).join(Sector, Sector.id == StockName.sector_id, isouter=True)
                 short_listed_stocks_resp = []
-                for short_list, stock, sector in self.db_connection.execute(latest_short_list_stmt):
+                for short_list, stock, sector in self.db_connection.execute(latest_short_list_stmt).all():
                     price_actions = []
                     price_action_ids = short_list.price_action_ids
                     for price_action_id in price_action_ids:
@@ -43,11 +42,16 @@ class ShortListManager:
                             PriceAction.id == price_action_id
                         )).scalar()
                         price_actions.append(PriceActionsORM.from_orm(price_action))
+                    sector_name = None
+                    sector_url = None
+                    if sector:
+                        sector_name = sector.sector_name
+                        sector_url = sector.sector_url
                     short_listed_stock_resp = ShortListedStock(
                         stock_name=stock.stock_name,
                         stock_url=stock.details_url,
-                        stock_sector_name=sector.sector_name,
-                        stock_sector_url=sector.sector_url,
+                        stock_sector_name=sector_name,
+                        stock_sector_url=sector_url,
                         price_actions=price_actions
                     )
                     short_listed_stocks_resp.append(short_listed_stock_resp)
