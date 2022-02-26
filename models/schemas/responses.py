@@ -1,5 +1,5 @@
 from datetime import datetime, date
-from enum import Enum
+from typing import Optional
 
 from pydantic import BaseModel
 from uuid import UUID
@@ -65,6 +65,9 @@ class PriceActions(BaseModel):
 
 class ShortListedStock(BaseModel):
     stock_name: str
+    stock_url: Optional[str]
+    stock_sector_name: Optional[str]
+    stock_sector_url: Optional[str]
     price_actions: List[PriceActions]
 
 

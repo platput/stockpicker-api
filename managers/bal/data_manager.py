@@ -26,14 +26,15 @@ class DataManager:
         for stock_name, stock_details in scraped_mc_data.items():
             mc_data = {
                 Constants.STOCK_NAME: stock_name,
+                Constants.STOCK_DETAILS_URL: stock_details[Constants.STOCK_DETAILS_URL],
                 Constants.STOCK_DETAILS: [],
-                Constants.DATE: datetime.now(ZoneInfo('Asia/Kolkata'))
+                Constants.DATE: datetime.now(ZoneInfo(Constants.TIME_ZONE))
             }
-            for item in stock_details:
+            for item in stock_details.get(Constants.PRICE_ACTION, []):
                 mc_data_details = {
-                    Constants.TIME_PERIOD: item["time_period"],
-                    Constants.STARTING_PRICE: item["starting_price"],
-                    Constants.ENDING_PRICE: item["ending_price"]
+                    Constants.TIME_PERIOD: item[Constants.TIME_PERIOD],
+                    Constants.STARTING_PRICE: item[Constants.STARTING_PRICE],
+                    Constants.ENDING_PRICE: item[Constants.ENDING_PRICE]
                 }
                 mc_data[Constants.STOCK_DETAILS].append(mc_data_details)
             formatted_data.append(mc_data)
