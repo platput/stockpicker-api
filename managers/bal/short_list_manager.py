@@ -25,15 +25,16 @@ class ShortListManager:
         :return:
         """
         try:
-            stmt = select(ShortlistedStock).limit(1).order_by(ShortlistedStock.conditions_met_on.desc())
+            stmt = select(
+                ShortlistedStock.conditions_met_on
+            ).distinct().limit(1).offset(offset).order_by(ShortlistedStock.conditions_met_on.desc())
             short_listed_stock = self.db_connection.execute(stmt).scalar()
             if short_listed_stock:
-                latest_date = short_listed_stock.conditions_met_on
+                latest_date = short_listed_stock
                 latest_short_list_stmt = select(ShortlistedStock, StockName, Sector).where(
                     ShortlistedStock.conditions_met_on == latest_date,
                     StockName.id == ShortlistedStock.stock_id,
                 ).join(Sector, Sector.id == StockName.sector_id, isouter=True)
-                print(latest_short_list_stmt)
                 short_listed_stocks_resp = []
                 for short_list, stock, sector in self.db_connection.execute(latest_short_list_stmt).all():
                     # print(f"stock.stock_name: {stock.stock_name}")
