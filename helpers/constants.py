@@ -28,3 +28,9 @@ class Constants:
     FOURTEEN_TO_FIFTEEN = "14_15"
     FIFTEEN_TO_SIXTEEN = "15_16"
 
+    # Zerodha specific
+    GOOGLE_DOC_CSV_EXPORT_READY_URL = "https://docs.google.com/spreadsheets/d/{doc_id}/export?format=csv&gid={sheet_id}"
+    # Current URL: https://docs.google.com/spreadsheets/d/1ZTyh6GiHTwA1d-ApYdn5iCmRiBLZoAtwigS7VyLUk_Y/edit#gid=0
+    # DATE: 18/03/2022
+    DOC_ID = "1ZTyh6GiHTwA1d-ApYdn5iCmRiBLZoAtwigS7VyLUk_Y"
+    SHEET_ID = 0

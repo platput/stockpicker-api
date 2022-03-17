@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 
+from managers.scrape_manager import ScrapeManager
 from models.db.schema import PriceAction, StockName, ShortlistedStock, Sector
 from models.schemas.responses import ShortListResponse, ShortListedStock, ShortListedStocksResponse, PriceActions as PriceActionsORM
 
@@ -59,6 +60,7 @@ class ShortListManager:
                     short_listed_stock_resp = ShortListedStock(
                         stock_name=stock.stock_name,
                         symbol=symbol,
+                        is_intraday_allowed=short_list.is_intraday_allowed,
                         stock_url=stock.details_url,
                         stock_sector_name=sector_name,
                         stock_sector_url=sector_url,
@@ -89,6 +91,8 @@ class ShortListManager:
         Creates the shortlist for the current day
         :return:
         """
+        # Get the list of allowed intraday stocks
+        allowed_intraday_stocks = ScrapeManager.get_intraday_allowed_stocks()
         # datetime.now(ZoneInfo('Asia/Kolkata'))
         current_date = datetime.now(ZoneInfo('Asia/Kolkata')).date()
         # day_minus_two = current_date - timedelta(days=2)
@@ -143,9 +147,14 @@ class ShortListManager:
                             price_action_list_day_three[-1].get("end") >= price_action_list_day_three[0].get("start"):
                         short_listed_stocks.append(stock)
                         # Save shortlisted stocks into db
+                        is_allowed_for_intraday_trading = self.__check_if_intraday_is_allowed(
+                            price_action_one.stock_id,
+                            allowed_intraday_stocks
+                        )
                         short_list_stock = ShortlistedStock(
                             id=uuid.uuid4(),
                             stock_id=price_action_one.stock_id,
+                            is_intraday_allowed=is_allowed_for_intraday_trading,
                             price_action_ids=[str(price_action_one.id), str(price_action_two.id),
                                               str(price_action_three.id)],
                             conditions_met_on=price_action_one.price_date,
@@ -221,3 +230,20 @@ class ShortListManager:
         if price_action.hour_7_start > 0:
             price_actions.append({"start": price_action.hour_7_start, "end": price_action.hour_7_end})
         return price_actions
+
+    def __check_if_intraday_is_allowed(self, stock_id, allowed_intraday_stocks) -> bool:
+        """
+        Check if the stock is allowed for intraday trading
+        :param stock_id:
+        :param allowed_intraday_stocks:
+        :return:
+        """
+        # First get the stock symbol from db
+        # If it doesn't exist, then it is not allowed
+        # If it exists but doesn't appear in the allowed list, then it is not allowed
+        stmt = select(StockName).where(StockName.id == stock_id)
+        if stock := self.db_connection.execute(stmt).scalar():
+            if stock_symbol := stock.symbol:
+                if stock_symbol in allowed_intraday_stocks:
+                    return True
+        return False

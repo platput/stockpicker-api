@@ -1,7 +1,9 @@
 import requests
 from bs4 import BeautifulSoup
+
 from helpers.constants import Constants
 import logging
+import pandas as pd
 
 from managers.bal.data_manager import DataManager
 from managers.bal.price_action_data_manager import PriceActionDataManager
@@ -146,3 +148,10 @@ class ScrapeManager:
         except Exception as e:
             print(f"Couldn't get sector details. Error: {e}")
             return None
+
+    @staticmethod
+    def get_intraday_allowed_stocks():
+        allowed_mis_stocks = pd.read_csv(
+            Constants.GOOGLE_DOC_CSV_EXPORT_READY_URL.format(doc_id=Constants.DOC_ID, sheet_id=Constants.SHEET_ID),
+        )
+        return [item for item in allowed_mis_stocks["Stocks allowed for MIS"]]

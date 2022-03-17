@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, TIMESTAMP, ForeignKey, UniqueConstraint, JSON, Numeric, DATE
+from sqlalchemy import Column, Integer, String, TIMESTAMP, ForeignKey, UniqueConstraint, JSON, Numeric, DATE, Boolean
 from sqlalchemy.sql.expression import text
 
 from managers.dal.sqlalchemy import Base
@@ -46,6 +46,7 @@ class ShortlistedStock(Base):
     stock_id = Column(Integer, ForeignKey("stock_names.id"), nullable=False)
     price_action_ids = Column(JSON, nullable=False)
     conditions_met_on = Column(DATE, nullable=False)
+    is_intraday_allowed = Column(Boolean, default=False)
     created_at = Column(TIMESTAMP, nullable=False, server_default=text('now()'))
     __table_args__ = (UniqueConstraint('stock_id', 'conditions_met_on', name='_shortlisted_date_uc'),)
 
