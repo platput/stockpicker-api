@@ -127,6 +127,17 @@ class PriceActionDataManager:
         except Exception as e:
             logging.getLogger().error(e)
 
+    def get_stocks_with_missing_symbol(self):
+        """
+        Gets the stocks with missing symbol
+        :return:
+        """
+        try:
+            stmt = select(StockName).where(StockName.symbol == None)
+            return self.db_connection.execute(stmt).scalars()
+        except Exception as e:
+            logging.getLogger().error(e)
+
     def add_sector_details_to_db(self, stock_id, sector_name, sector_url):
         """
         Adds the sector details to db and update the stock with the sector id
@@ -146,6 +157,23 @@ class PriceActionDataManager:
             stmt = select(StockName).where(StockName.id == stock_id)
             stock_obj = self.db_connection.execute(stmt).scalar()
             stock_obj.sector_id = sector.id
+            self.db_connection.add(stock_obj)
+            self.db_connection.commit()
+        except Exception as e:
+            logging.getLogger().error(e)
+            self.db_connection.rollback()
+
+    def add_symbol_to_db(self, stock_id, symbol):
+        """
+        Adds the sector details to db and update the stock with the sector id
+        :param stock_id:
+        :param symbol:
+        :return:
+        """
+        try:
+            stmt = select(StockName).where(StockName.id == stock_id)
+            stock_obj = self.db_connection.execute(stmt).scalar()
+            stock_obj.symbol = symbol
             self.db_connection.add(stock_obj)
             self.db_connection.commit()
         except Exception as e:

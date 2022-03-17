@@ -9,6 +9,7 @@ class StockName(Base):
 
     id = Column(Integer, primary_key=True, nullable=True)
     stock_name = Column(String, nullable=False)
+    symbol = Column(String, nullable=True)
     details_url = Column(String, nullable=False)
     sector_id = Column(Integer, nullable=False)
     created_at = Column(TIMESTAMP, nullable=False, server_default=text('now()'))

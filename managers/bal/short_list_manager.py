@@ -52,8 +52,13 @@ class ShortListManager:
                     if sector:
                         sector_name = sector.sector_name
                         sector_url = sector.sector_url
+                    if stock.symbol is None:
+                        symbol = ""
+                    else:
+                        symbol = stock.symbol
                     short_listed_stock_resp = ShortListedStock(
                         stock_name=stock.stock_name,
+                        symbol=symbol,
                         stock_url=stock.details_url,
                         stock_sector_name=sector_name,
                         stock_sector_url=sector_url,

@@ -30,3 +30,14 @@ def scrape_mc(db: Session = Depends(get_db)):
     except (ConnectionError, AttributeError) as ce:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail=f"Data couldn't be fetched at this time. Error: {ce}")
+
+
+@router.get("/update-symbols", response_model=ScrapeMCResponse)
+def update_symbols(db: Session = Depends(get_db)):
+    scrape_manager = ScrapeManager(urls_to_scrape=None)
+    try:
+        response_data = scrape_manager.fetch_symbols_and_update(db_session=db)
+        return response_data
+    except (ConnectionError, AttributeError) as ce:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail=f"Data couldn't be fetched at this time. Error: {ce}")
