@@ -34,3 +34,6 @@ class Constants:
     # DATE: 18/03/2022
     DOC_ID = "1ZTyh6GiHTwA1d-ApYdn5iCmRiBLZoAtwigS7VyLUk_Y"
     SHEET_ID = 0
+
+    # Memcache
+    SECTORIAL_INDICES_KEY = "sectorial_indices"

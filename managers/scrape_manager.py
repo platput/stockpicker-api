@@ -1,3 +1,6 @@
+import json
+from datetime import timedelta
+
 import requests
 from bs4 import BeautifulSoup
 
@@ -7,7 +10,8 @@ import pandas as pd
 
 from managers.bal.data_manager import DataManager
 from managers.bal.price_action_data_manager import PriceActionDataManager
-from models.schemas.responses import ScrapeMCResponse
+from managers.dal.redis_manager import RedisManager
+from models.schemas.responses import ScrapeMCResponse, SectorialIndex
 
 
 class ScrapeManager:
@@ -155,3 +159,54 @@ class ScrapeManager:
             Constants.GOOGLE_DOC_CSV_EXPORT_READY_URL.format(doc_id=Constants.DOC_ID, sheet_id=Constants.SHEET_ID),
         )
         return [item for item in allowed_mis_stocks["Stocks allowed for MIS"]]
+
+    def fetch_sectorial_indices(self, sector_details_list):
+        # Checks if the data exists in redis
+        # If it exists, reads it and returns it
+        # If not, it needs to be scrapped
+        # Gets the sectorial indices from money control
+        # Create the list of objects with all the details
+        # add the data to redis
+        redis_manager = RedisManager()
+        conn = redis_manager.get_redis_connector()
+        value = conn.get(Constants.SECTORIAL_INDICES_KEY)
+        if value is not None:
+            return json.loads(value)
+        else:
+            sectorial_indices = []
+            for sector in sector_details_list:
+                response = self.session.get(sector.sector_details_url, headers=Constants.USER_AGENT)
+                if response.status_code == 200:
+                    soup_content = BeautifulSoup(response.content, Constants.HTML_PARSER)
+                    if ticker := soup_content.find('div', attrs={'class': 'secdrop_bg clearfix indian_indices_element'}):
+                        if inside_ticker := ticker.find('div', attrs={'class': 'customDdl lstpg ML10 FL'}):
+                            if index_price := inside_ticker.find('span', attrs={'class': 'selectedText'}):
+                                index_price_text = index_price.text.strip()
+                                index_price = index_price_text.split(" ")[-1]
+                                index_name = index_price_text.split(index_price)[0].strip()
+                                market_movement_up = inside_ticker.find('span', attrs={'class': 'mk_txt up'})
+                                market_movement_down = inside_ticker.find('span', attrs={'class': 'mk_txt down'})
+                                market_movement = ""
+                                positive_movement_flag = True
+                                if market_movement_up is not None:
+                                    positive_movement_flag = True
+                                    market_movement = market_movement_up.text.strip()
+                                elif market_movement_down is not None:
+                                    positive_movement_flag = False
+                                    market_movement = market_movement_down.text.strip()
+                                sectorial_indices.append(
+                                    SectorialIndex(
+                                        sector_name=sector.sector_name,
+                                        sector_url=sector.sector_details_url,
+                                        positive_movement=positive_movement_flag,
+                                        market_movement=market_movement,
+                                        index_name=index_name,
+                                        index_value=index_price,
+                                    )
+                                )
+            conn.setex(
+                Constants.SECTORIAL_INDICES_KEY,
+                timedelta(hours=1),
+                value=json.dumps(sectorial_indices)
+            )
+            return sectorial_indices
