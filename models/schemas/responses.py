@@ -65,9 +65,11 @@ class PriceActions(BaseModel):
 
 class ShortListedStock(BaseModel):
     stock_name: str
+    symbol: str
     stock_url: Optional[str]
     stock_sector_name: Optional[str]
     stock_sector_url: Optional[str]
+    is_intraday_allowed: Optional[bool]
     price_actions: List[PriceActions]
 
 

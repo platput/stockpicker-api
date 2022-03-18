@@ -1,7 +1,9 @@
 import requests
 from bs4 import BeautifulSoup
+
 from helpers.constants import Constants
 import logging
+import pandas as pd
 
 from managers.bal.data_manager import DataManager
 from managers.bal.price_action_data_manager import PriceActionDataManager
@@ -38,11 +40,21 @@ class ScrapeManager:
         # any give stock in the database.
         for stock in pa_data_manager.get_stocks_with_missing_sector_details():
             sector_details = self.get_sector_details(stock.details_url)
+            if sector_details.get(Constants.SECTOR_NAME) is None or sector_details.get(Constants.SECTOR_URL) is None:
+                continue
             pa_data_manager.add_sector_details_to_db(
                 stock.id,
                 sector_details.get(Constants.SECTOR_NAME),
                 sector_details.get(Constants.SECTOR_URL)
             )
+        # # Adding the missing symbols to the stocks table
+        # for stock in pa_data_manager.get_stocks_with_missing_symbol():
+        #     symbol = self.get_symbol(stock.details_url)
+        #     if symbol is not None or symbol != "":
+        #         pa_data_manager.add_symbol_to_db(
+        #             stock.id,
+        #             symbol,
+        #         )
         return ScrapeMCResponse(success=True, message="Successfully scraped data")
 
     def scrape_url(self, time_period, link):
@@ -98,4 +110,48 @@ class ScrapeManager:
                 Constants.SECTOR_URL: None,
             }
 
+    def fetch_symbols_and_update(self, db_session):
+        # Get all the stocks with empty symbols
+        pa_data_manager = PriceActionDataManager(db_session)
+        stocks = pa_data_manager.get_stocks_with_missing_symbol()
+        for stock in pa_data_manager.get_stocks_with_missing_symbol():
+            try:
+                symbol = self.get_symbol(stock.details_url)
+                if symbol is not None or symbol != "":
+                    pa_data_manager.add_symbol_to_db(
+                        stock.id,
+                        symbol,
+                    )
+            except Exception as e:
+                logging.getLogger().error(f"Error while fetching symbol for {stock.stock_name}: {e}")
+        return ScrapeMCResponse(success=True, message="Successfully scraped data")
 
+    def get_symbol(self, stock_details_url):
+        try:
+            if stock_details_url is None:
+                return None
+            response = self.session.get(stock_details_url, headers=Constants.USER_AGENT)
+            if response.status_code == 200:
+                soup_content = BeautifulSoup(response.content, Constants.HTML_PARSER)
+                symbol_section = soup_content.find('div', attrs={'id': 'company_info'})
+                details_section = symbol_section.findAll('li')
+                for column in details_section:
+                    if column.h3 is not None:
+                        if column.h3.text == 'Details':
+                            rows = column.findAll('li')
+                            for row in rows:
+                                if row.span is not None:
+                                    if 'NSE' in row.span.text:
+                                        if row.p is not None and row.p.text is not None:
+                                            if row.p.text.strip() != "":
+                                                return row.p.text
+        except Exception as e:
+            print(f"Couldn't get sector details. Error: {e}")
+            return None
+
+    @staticmethod
+    def get_intraday_allowed_stocks():
+        allowed_mis_stocks = pd.read_csv(
+            Constants.GOOGLE_DOC_CSV_EXPORT_READY_URL.format(doc_id=Constants.DOC_ID, sheet_id=Constants.SHEET_ID),
+        )
+        return [item for item in allowed_mis_stocks["Stocks allowed for MIS"]]
