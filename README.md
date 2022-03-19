@@ -107,4 +107,8 @@ Once everything is dockerized, the redis container should not expose the port an
 
 `sudo docker run -p6379:6379  --name stockcache -d redis`
 
-
+## Troubleshooting
+- Gateway Timeout
+  - Check if the port for gunicorn is being used, you can find it using the command `sudo lsof -i -P -n | grep LISTEN`
+  - kill it using `killall -9 gunicorn`
+  - restart the supervisord using the command `sudo supervisorctl restart stockpickerapi_gunicorn`

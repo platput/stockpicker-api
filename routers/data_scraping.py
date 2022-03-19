@@ -15,7 +15,7 @@ router = APIRouter(
 
 
 @router.get("/mc", response_model=ScrapeMCResponse)
-async def scrape_mc(db: Session = Depends(get_db)):
+def scrape_mc(db: Session = Depends(get_db)):
     urls_to_scrape = {
         "9_10": "https://www.moneycontrol.com/stocks/marketstats/hourly_gain/bse/hour_1/index.php",
         "10_11": "https://www.moneycontrol.com/stocks/marketstats/hourly_gain/bse/hour_2/index.php",
@@ -35,7 +35,7 @@ async def scrape_mc(db: Session = Depends(get_db)):
 
 
 @router.get("/update-symbols", response_model=ScrapeMCResponse)
-async def update_symbols(db: Session = Depends(get_db)):
+def update_symbols(db: Session = Depends(get_db)):
     scrape_manager = ScrapeManager(urls_to_scrape=None)
     try:
         response_data = scrape_manager.fetch_symbols_and_update(db_session=db)
@@ -46,7 +46,7 @@ async def update_symbols(db: Session = Depends(get_db)):
 
 
 @router.post("/mc/sector/indices", response_model=SectorialIndicesResponse)
-async def scrape_sectorial_indices(sector_details_list: List[SectorDetails]):
+def scrape_sectorial_indices(sector_details_list: List[SectorDetails]):
     scrape_manager = ScrapeManager(urls_to_scrape=None)
     try:
         response_data = scrape_manager.fetch_sectorial_indices(sector_details_list)

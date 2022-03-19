@@ -22,7 +22,7 @@ app.add_middleware(
 
 
 @app.get("/")
-async def root():
+def root():
     return {"data": "This is a private API. You can find more info about this api by contacting "
                     "me at twitter.com/platput"}
 

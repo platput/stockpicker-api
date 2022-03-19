@@ -12,7 +12,7 @@ router = APIRouter(
 
 
 @router.get("/create", response_model=ShortListResponse)
-async def create_short_list(db: Session = Depends(get_db)):
+def create_short_list(db: Session = Depends(get_db)):
     short_list_manager = ShortListManager(db)
     try:
         response_data = short_list_manager.create_short_list()
@@ -23,7 +23,7 @@ async def create_short_list(db: Session = Depends(get_db)):
 
 
 @router.get("/get/latest", response_model=ShortListedStocksResponse)
-async def get_short_list(db: Session = Depends(get_db)):
+def get_short_list(db: Session = Depends(get_db)):
     short_list_manager = ShortListManager(db)
     try:
         response_data = short_list_manager.fetch_short_list()
