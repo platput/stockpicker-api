@@ -24,6 +24,6 @@ app.add_middleware(
 @app.get("/")
 async def root():
     return {"data": "This is a private API. You can find more info about this api by contacting "
-                    "me at github.com/platoputhur"}
+                    "me at twitter.com/mr_puthooran"}
 
 
