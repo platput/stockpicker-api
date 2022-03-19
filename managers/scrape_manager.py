@@ -11,7 +11,7 @@ import pandas as pd
 from managers.bal.data_manager import DataManager
 from managers.bal.price_action_data_manager import PriceActionDataManager
 from managers.dal.redis_manager import RedisManager
-from models.schemas.responses import ScrapeMCResponse, SectorialIndex
+from models.schemas.responses import ScrapeMCResponse, SectorialIndex, SectorialIndicesResponse
 
 
 class ScrapeManager:
@@ -168,10 +168,10 @@ class ScrapeManager:
         # Create the list of objects with all the details
         # add the data to redis
         redis_manager = RedisManager()
-        conn = redis_manager.get_redis_connector()
+        conn = redis_manager.client
         value = conn.get(Constants.SECTORIAL_INDICES_KEY)
         if value is not None:
-            return json.loads(value)
+            unique_indices = json.loads(value.decode('utf-8'))
         else:
             sectorial_indices = []
             for sector in sector_details_list:
@@ -180,33 +180,63 @@ class ScrapeManager:
                     soup_content = BeautifulSoup(response.content, Constants.HTML_PARSER)
                     if ticker := soup_content.find('div', attrs={'class': 'secdrop_bg clearfix indian_indices_element'}):
                         if inside_ticker := ticker.find('div', attrs={'class': 'customDdl lstpg ML10 FL'}):
-                            if index_price := inside_ticker.find('span', attrs={'class': 'selectedText'}):
-                                index_price_text = index_price.text.strip()
-                                index_price = index_price_text.split(" ")[-1]
-                                index_name = index_price_text.split(index_price)[0].strip()
+                            if index_price_details := inside_ticker.find('span', attrs={'class': 'selectedText'}):
+                                index_price_text = index_price_details.text.strip()
                                 market_movement_up = inside_ticker.find('span', attrs={'class': 'mk_txt up'})
                                 market_movement_down = inside_ticker.find('span', attrs={'class': 'mk_txt down'})
-                                market_movement = ""
-                                positive_movement_flag = True
+                                market_movement_no_change = inside_ticker.find('span', attrs={'class': 'mk_txt'})
                                 if market_movement_up is not None:
                                     positive_movement_flag = True
                                     market_movement = market_movement_up.text.strip()
                                 elif market_movement_down is not None:
                                     positive_movement_flag = False
                                     market_movement = market_movement_down.text.strip()
-                                sectorial_indices.append(
-                                    SectorialIndex(
-                                        sector_name=sector.sector_name,
-                                        sector_url=sector.sector_details_url,
-                                        positive_movement=positive_movement_flag,
-                                        market_movement=market_movement,
-                                        index_name=index_name,
-                                        index_value=index_price,
-                                    )
-                                )
+                                else:
+                                    positive_movement_flag = False
+                                    market_movement = market_movement_no_change.text.strip()
+                                index_price_and_name = index_price_text.split(market_movement)[0].strip()
+                                index_price = index_price_and_name.split(" ")[-1]
+                                index_name = index_price_and_name.split(index_price)[0].strip()
+                                sectorial_index = {
+                                    "sector_name": sector.sector_name,
+                                    "sector_url": sector.sector_details_url,
+                                    "positive_movement": positive_movement_flag,
+                                    "market_movement": market_movement,
+                                    "index_name": index_name,
+                                    "index_value": index_price,
+                                }
+                                sectorial_indices.append(sectorial_index)
+            unique_indices = {}
+            for sectorial_index in sectorial_indices:
+                market_movement = sectorial_index.get("market_movement")
+                positive_movement = sectorial_index.get("positive_movement")
+                index_name = sectorial_index.get("index_name")
+                index_value = sectorial_index.get("index_value")
+                sector_name = sectorial_index.get("sector_name")
+                sector_url = sectorial_index.get("sector_url")
+                if index_name not in unique_indices:
+                    unique_indices[sectorial_index.get("index_name")] = {
+                        "positive_movement": positive_movement,
+                        "market_movement": market_movement,
+                        "index_name": index_name,
+                        "index_value": index_value,
+                        "sectors": [{
+                            "sector_name": sector_name,
+                            "sector_url": sector_url,
+                        }]
+                    }
+                else:
+                    unique_indices[sectorial_index.get("index_name")]["sectors"].append({
+                        "sector_name": sector_name,
+                        "sector_url": sector_url,
+                    })
             conn.setex(
                 Constants.SECTORIAL_INDICES_KEY,
                 timedelta(hours=1),
-                value=json.dumps(sectorial_indices)
+                value=json.dumps(unique_indices)
             )
-            return sectorial_indices
+        return SectorialIndicesResponse(
+            success=True,
+            message="Sectorial indices fetched successfully",
+            sectorial_indices=[SectorialIndex(**sectorial_index) for _, sectorial_index in unique_indices.items()]
+        )
