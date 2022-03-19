@@ -1,10 +1,12 @@
 import json
+from typing import List
 
 from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.orm import Session
 from managers.dal.sqlalchemy import get_db
 from managers.scrape_manager import ScrapeManager
-from models.schemas.responses import ScrapeMCResponse
+from models.schemas.requests import SectorDetails
+from models.schemas.responses import ScrapeMCResponse, SectorialIndicesResponse
 
 router = APIRouter(
     prefix="/scrape",
@@ -13,7 +15,7 @@ router = APIRouter(
 
 
 @router.get("/mc", response_model=ScrapeMCResponse)
-def scrape_mc(db: Session = Depends(get_db)):
+async def scrape_mc(db: Session = Depends(get_db)):
     urls_to_scrape = {
         "9_10": "https://www.moneycontrol.com/stocks/marketstats/hourly_gain/bse/hour_1/index.php",
         "10_11": "https://www.moneycontrol.com/stocks/marketstats/hourly_gain/bse/hour_2/index.php",
@@ -33,10 +35,21 @@ def scrape_mc(db: Session = Depends(get_db)):
 
 
 @router.get("/update-symbols", response_model=ScrapeMCResponse)
-def update_symbols(db: Session = Depends(get_db)):
+async def update_symbols(db: Session = Depends(get_db)):
     scrape_manager = ScrapeManager(urls_to_scrape=None)
     try:
         response_data = scrape_manager.fetch_symbols_and_update(db_session=db)
+        return response_data
+    except (ConnectionError, AttributeError) as ce:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail=f"Data couldn't be fetched at this time. Error: {ce}")
+
+
+@router.post("/mc/sector/indices", response_model=SectorialIndicesResponse)
+async def scrape_sectorial_indices(sector_details_list: List[SectorDetails]):
+    scrape_manager = ScrapeManager(urls_to_scrape=None)
+    try:
+        response_data = scrape_manager.fetch_sectorial_indices(sector_details_list)
         return response_data
     except (ConnectionError, AttributeError) as ce:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

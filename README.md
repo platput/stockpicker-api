@@ -98,6 +98,13 @@ def lambda_handler(event, context):
             }
         return response
 ```
+## Redis setup
+Redis is needed to store the sectorial-indices data which will be kept in the redis store for 1 hour for now. The data will be reloaded if ite being accessed after one hour.
+This is done to avoid the data being stale.
 
+Redis is setup using the official docker image and here is the command to set it up. This docker doesn't have password protection, so aws ec2 instance must not open the port **6379**.
+Once everything is dockerized, the redis container should not expose the port and the -p from the command can be removed.
+
+`sudo docker run -p6379:6379  --name stockcache -d redis`
 
 

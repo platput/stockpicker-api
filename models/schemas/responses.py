@@ -77,3 +77,23 @@ class ShortListedStocksResponse(BaseModel):
     success: bool
     message: str
     shortlisted_stocks: List[ShortListedStock]
+
+
+class SectorDetails(BaseModel):
+    sector_name: Optional[str]
+    sector_url: Optional[str]
+
+
+class SectorialIndex(BaseModel):
+    index_name: Optional[str]
+    index_value: Optional[str]
+    sectors: List[SectorDetails]
+    positive_movement: Optional[bool]
+    market_movement: Optional[str]
+
+
+class SectorialIndicesResponse(BaseModel):
+    success: bool
+    message: str
+    sectorial_indices: List[SectorialIndex]
+
