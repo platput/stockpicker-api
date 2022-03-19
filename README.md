@@ -16,11 +16,11 @@
 - `sudo supervisorctl status stockpickerapi_gunicorn`
 
 ## Supervisor conf
-```angular2html
+```supervisor
 [program:stockpickerapi_gunicorn]
 user=ubuntu
 directory=/home/ubuntu/stockpickerapi/
-command=/home/ubuntu/stockpickerapi/venv/bin/gunicorn --bind 0.0.0.0 -k uvicorn.workers.UvicornWorker main:app
+command=/home/ubuntu/stockpickerapi/venv/bin/gunicorn --bind 0.0.0.0 -k uvicorn.workers.UvicornWorker main:app --timeout 300
 autostart=true
 autorestart=true
 stderr_logfile=/home/ubuntu/stockpickerapi/gunicorn.err.log
