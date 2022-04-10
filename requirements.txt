@@ -5,6 +5,7 @@ beautifulsoup4==4.10.0
 certifi==2021.10.8
 charset-normalizer==2.0.11
 click==8.0.3
+Deprecated==1.2.13
 dnspython==2.2.0
 email-validator==1.1.3
 fastapi==0.73.0
@@ -15,12 +16,19 @@ itsdangerous==2.0.1
 Jinja2==3.0.3
 Mako==1.1.6
 MarkupSafe==2.0.1
+numpy==1.22.3
 orjson==3.6.6
+packaging==21.3
+pandas==1.4.1
 psycopg2==2.9.3
 pydantic==1.9.0
+pyparsing==3.0.7
+python-dateutil==2.8.2
 python-dotenv==0.19.2
 python-multipart==0.0.5
+pytz==2021.3
 PyYAML==5.4.1
+redis==4.1.4
 requests==2.27.1
 six==1.16.0
 sniffio==1.2.0
@@ -35,6 +43,5 @@ uvicorn==0.15.0
 uvloop==0.16.0
 watchgod==0.7
 websockets==10.1
-pandas~=1.4.1
-
-redis~=4.1.4
+wrapt==1.14.0
+XlsxWriter==3.0.3
