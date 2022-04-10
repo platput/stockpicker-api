@@ -6,9 +6,12 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 
+from fastapi.responses import StreamingResponse
+from managers.bal.excel_manager import ExcelManager
 from managers.scrape_manager import ScrapeManager
 from models.db.schema import PriceAction, StockName, ShortlistedStock, Sector
-from models.schemas.responses import ShortListResponse, ShortListedStock, ShortListedStocksResponse, PriceActions as PriceActionsORM
+from models.schemas.responses import ShortListResponse, ShortListedStock, ShortListedStocksResponse, \
+    PriceActions as PriceActionsORM
 
 
 class ShortListManager:
@@ -20,57 +23,78 @@ class ShortListManager:
     def __init__(self, db_connection):
         self.db_connection = db_connection
 
+    def download_short_list(self, offset=0):
+        """
+        Create the Excel sheet on the fly and download the shortlist
+        :param offset:
+        :return:
+        """
+        shortlists = self.get_short_list(offset)
+        excel_manager = ExcelManager()
+        shortlist_excel = excel_manager.create_excel_file_for_shortlist(shortlists)
+        headers = {
+            'Content-Disposition': 'attachment; filename="shortlist.xlsx"'
+        }
+        return StreamingResponse(iter([shortlist_excel.getvalue()]), headers=headers)
+
+    def get_short_list(self, offset=0):
+        stmt = select(
+            ShortlistedStock.conditions_met_on
+        ).distinct().limit(1).offset(offset).order_by(ShortlistedStock.conditions_met_on.desc())
+        short_listed_stock = self.db_connection.execute(stmt).scalar()
+        if short_listed_stock:
+            latest_date = short_listed_stock
+            latest_short_list_stmt = select(ShortlistedStock, StockName, Sector).where(
+                ShortlistedStock.conditions_met_on == latest_date,
+                StockName.id == ShortlistedStock.stock_id,
+                ).join(Sector, Sector.id == StockName.sector_id, isouter=True)
+            short_listed_stocks_resp = []
+            for short_list, stock, sector in self.db_connection.execute(latest_short_list_stmt).all():
+                # print(f"stock.stock_name: {stock.stock_name}")
+                # print(f"short_list: {short_list}")
+                # print(f"sector.sector_name: {sector.sector_name}")
+                price_actions = []
+                price_action_ids = short_list.price_action_ids
+                for price_action_id in price_action_ids:
+                    price_action = self.db_connection.execute(select(PriceAction).where(
+                        PriceAction.id == price_action_id
+                    )).scalar()
+                    price_actions.append(PriceActionsORM.from_orm(price_action))
+                sector_name = None
+                sector_url = None
+                if sector:
+                    sector_name = sector.sector_name
+                    sector_url = sector.sector_url
+                if stock.symbol is None:
+                    symbol = ""
+                else:
+                    symbol = stock.symbol
+                short_listed_stock_resp = ShortListedStock(
+                    stock_name=stock.stock_name,
+                    symbol=symbol,
+                    is_intraday_allowed=short_list.is_intraday_allowed,
+                    stock_url=stock.details_url,
+                    stock_sector_name=sector_name,
+                    stock_sector_url=sector_url,
+                    price_actions=price_actions
+                )
+                short_listed_stocks_resp.append(short_listed_stock_resp)
+            return short_listed_stocks_resp
+        else:
+            return []
+
     def fetch_short_list(self, offset=0):
         """
         Fetch the latest shortlist from the database
         :return:
         """
         try:
-            stmt = select(
-                ShortlistedStock.conditions_met_on
-            ).distinct().limit(1).offset(offset).order_by(ShortlistedStock.conditions_met_on.desc())
-            short_listed_stock = self.db_connection.execute(stmt).scalar()
-            if short_listed_stock:
-                latest_date = short_listed_stock
-                latest_short_list_stmt = select(ShortlistedStock, StockName, Sector).where(
-                    ShortlistedStock.conditions_met_on == latest_date,
-                    StockName.id == ShortlistedStock.stock_id,
-                ).join(Sector, Sector.id == StockName.sector_id, isouter=True)
-                short_listed_stocks_resp = []
-                for short_list, stock, sector in self.db_connection.execute(latest_short_list_stmt).all():
-                    # print(f"stock.stock_name: {stock.stock_name}")
-                    # print(f"short_list: {short_list}")
-                    # print(f"sector.sector_name: {sector.sector_name}")
-                    price_actions = []
-                    price_action_ids = short_list.price_action_ids
-                    for price_action_id in price_action_ids:
-                        price_action = self.db_connection.execute(select(PriceAction).where(
-                            PriceAction.id == price_action_id
-                        )).scalar()
-                        price_actions.append(PriceActionsORM.from_orm(price_action))
-                    sector_name = None
-                    sector_url = None
-                    if sector:
-                        sector_name = sector.sector_name
-                        sector_url = sector.sector_url
-                    if stock.symbol is None:
-                        symbol = ""
-                    else:
-                        symbol = stock.symbol
-                    short_listed_stock_resp = ShortListedStock(
-                        stock_name=stock.stock_name,
-                        symbol=symbol,
-                        is_intraday_allowed=short_list.is_intraday_allowed,
-                        stock_url=stock.details_url,
-                        stock_sector_name=sector_name,
-                        stock_sector_url=sector_url,
-                        price_actions=price_actions
-                    )
-                    short_listed_stocks_resp.append(short_listed_stock_resp)
+            shortlists = self.get_short_list(offset)
+            if shortlists:
                 return ShortListedStocksResponse(
                     success=True,
                     message="Shortlisted stocks fetched successfully",
-                    shortlisted_stocks=short_listed_stocks_resp
+                    shortlisted_stocks=shortlists
                 )
             else:
                 return ShortListedStocksResponse(
@@ -78,6 +102,7 @@ class ShortListManager:
                     message="Failed to get the shortlist.",
                     shortlisted_stocks=[]
                 )
+
         except Exception as e:
             logging.error(f'Error while fetching the short list for the day: {str(datetime.now())} Error: {type(e)}')
             return ShortListedStocksResponse(
