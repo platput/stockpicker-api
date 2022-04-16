@@ -71,6 +71,7 @@ class ShortListedStock(BaseModel):
     stock_sector_url: Optional[str]
     is_intraday_allowed: Optional[bool]
     price_actions: List[PriceActions]
+    stock_name_repetitions: Optional[int]
 
 
 class ShortListedStocksResponse(BaseModel):
