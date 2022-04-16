@@ -133,7 +133,7 @@ class PriceActionDataManager:
         :return:
         """
         try:
-            stmt = select(StockName).where(StockName.symbol == None)
+            stmt = select(StockName).where(StockName.symbol == None, StockName.symbol_exists == None)
             return self.db_connection.execute(stmt).scalars()
         except Exception as e:
             logging.getLogger().error(e)
@@ -170,10 +170,18 @@ class PriceActionDataManager:
         :param symbol:
         :return:
         """
+        # Symbol == 0 means we couldn't get the symbol due to some error, it's best to retry it in the next run
+        # Symbol == None, no error in the fetching but no symbol found
+        if symbol == 0:
+            return
         try:
             stmt = select(StockName).where(StockName.id == stock_id)
             stock_obj = self.db_connection.execute(stmt).scalar()
-            stock_obj.symbol = symbol
+            if symbol is None:
+                stock_obj.symbol_exists = False
+            else:
+                stock_obj.symbol = symbol
+                stock_obj.symbol_exists = True
             self.db_connection.add(stock_obj)
             self.db_connection.commit()
         except Exception as e:

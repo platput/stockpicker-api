@@ -117,15 +117,13 @@ class ScrapeManager:
     def fetch_symbols_and_update(self, db_session):
         # Get all the stocks with empty symbols
         pa_data_manager = PriceActionDataManager(db_session)
-        stocks = pa_data_manager.get_stocks_with_missing_symbol()
         for stock in pa_data_manager.get_stocks_with_missing_symbol():
             try:
                 symbol = self.get_symbol(stock.details_url)
-                if symbol is not None or symbol != "":
-                    pa_data_manager.add_symbol_to_db(
-                        stock.id,
-                        symbol,
-                    )
+                pa_data_manager.add_symbol_to_db(
+                    stock.id,
+                    symbol,
+                )
             except Exception as e:
                 logging.getLogger().error(f"Error while fetching symbol for {stock.stock_name}: {e}")
         return ScrapeMCResponse(success=True, message="Successfully scraped data")
@@ -134,7 +132,7 @@ class ScrapeManager:
         try:
             if stock_details_url is None:
                 return None
-            response = self.session.get(stock_details_url, headers=Constants.USER_AGENT)
+            response = self.session.get(stock_details_url.replace("http://", "https://"), headers=Constants.USER_AGENT, timeout=5)
             if response.status_code == 200:
                 soup_content = BeautifulSoup(response.content, Constants.HTML_PARSER)
                 symbol_section = soup_content.find('div', attrs={'id': 'company_info'})
@@ -149,9 +147,14 @@ class ScrapeManager:
                                         if row.p is not None and row.p.text is not None:
                                             if row.p.text.strip() != "":
                                                 return row.p.text
+                return None
+            elif response.status_code == 404:
+                return None
+            else:
+                return 0
         except Exception as e:
-            print(f"Couldn't get sector details. Error: {e}")
-            return None
+            logging.getLogger().error(f"Couldn't get stock symbol. Error: {e}")
+            return 0
 
     @staticmethod
     def get_intraday_allowed_stocks():
