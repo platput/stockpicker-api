@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime, timedelta
 from sqlalchemy.exc import IntegrityError
 from zoneinfo import ZoneInfo
+from sqlalchemy.sql import text
 
 from sqlalchemy import select
 
@@ -44,39 +45,59 @@ class ShortListManager:
         short_listed_stock = self.db_connection.execute(stmt).scalar()
         if short_listed_stock:
             latest_date = short_listed_stock
-            latest_short_list_stmt = select(ShortlistedStock, StockName, Sector).where(
-                ShortlistedStock.conditions_met_on == latest_date,
-                StockName.id == ShortlistedStock.stock_id,
-                ).join(Sector, Sector.id == StockName.sector_id, isouter=True)
+            # latest_short_list_stmt = select(ShortlistedStock, StockName, Sector).where(
+            #     ShortlistedStock.conditions_met_on == latest_date,
+            #     StockName.id == ShortlistedStock.stock_id,
+            #     ).join(Sector, Sector.id == StockName.sector_id, isouter=True)
+            latest_short_list_stmt = text("""
+            SELECT 
+                shortlisted_stocks.price_action_ids, 
+                shortlisted_stocks.is_intraday_allowed, 
+                sectors.sector_name, 
+                sectors.sector_url, 
+                stock_names.symbol, 
+                stock_names.stock_name, 
+                stock_names.details_url, 
+                counter.stock_name_repetitions 
+            FROM shortlisted_stocks 
+            JOIN stock_names ON shortlisted_stocks.stock_id = stock_names.id 
+            LEFT OUTER JOIN sectors ON stock_names.sector_id  = sectors.id 
+            JOIN( 
+                SELECT stock_names.id as stock_id, count(stock_name) as stock_name_repetitions 
+                FROM (shortlisted_stocks 
+                JOIN stock_names on shortlisted_stocks.stock_id = stock_names.id) 
+                WHERE shortlisted_stocks.conditions_met_on > NOW() - INTERVAL '1 MONTH' GROUP BY 1) 
+                counter ON counter.stock_id = shortlisted_stocks.stock_id 
+                WHERE conditions_met_on=:latest_date;
+            """)
             short_listed_stocks_resp = []
-            for short_list, stock, sector in self.db_connection.execute(latest_short_list_stmt).all():
-                # print(f"stock.stock_name: {stock.stock_name}")
-                # print(f"short_list: {short_list}")
-                # print(f"sector.sector_name: {sector.sector_name}")
+            for short_list_details in self.db_connection.execute(
+                    latest_short_list_stmt,
+                    {"latest_date": latest_date}
+            ).all():
+                price_action_ids = short_list_details[0]
+                is_intraday_allowed = short_list_details[1]
+                sector_name = short_list_details[2] if short_list_details[2] else None
+                sector_url = short_list_details[3] if short_list_details[3] else None
+                symbol = short_list_details[4] if short_list_details[4] else ""
+                stock_name = short_list_details[5]
+                details_url = short_list_details[6]
+                stock_name_repetitions = short_list_details[7]
                 price_actions = []
-                price_action_ids = short_list.price_action_ids
                 for price_action_id in price_action_ids:
                     price_action = self.db_connection.execute(select(PriceAction).where(
                         PriceAction.id == price_action_id
                     )).scalar()
                     price_actions.append(PriceActionsORM.from_orm(price_action))
-                sector_name = None
-                sector_url = None
-                if sector:
-                    sector_name = sector.sector_name
-                    sector_url = sector.sector_url
-                if stock.symbol is None:
-                    symbol = ""
-                else:
-                    symbol = stock.symbol
                 short_listed_stock_resp = ShortListedStock(
-                    stock_name=stock.stock_name,
+                    stock_name=stock_name,
                     symbol=symbol,
-                    is_intraday_allowed=short_list.is_intraday_allowed,
-                    stock_url=stock.details_url,
+                    is_intraday_allowed=is_intraday_allowed,
+                    stock_url=details_url,
                     stock_sector_name=sector_name,
                     stock_sector_url=sector_url,
-                    price_actions=price_actions
+                    price_actions=price_actions,
+                    stock_name_repetitions=stock_name_repetitions
                 )
                 short_listed_stocks_resp.append(short_listed_stock_resp)
             return short_listed_stocks_resp

@@ -129,6 +129,7 @@ class ScrapeManager:
         return ScrapeMCResponse(success=True, message="Successfully scraped data")
 
     def get_symbol(self, stock_details_url):
+        print(stock_details_url)
         try:
             if stock_details_url is None:
                 return None
