@@ -112,3 +112,11 @@ Once everything is dockerized, the redis container should not expose the port an
   - Check if the port for gunicorn is being used, you can find it using the command `sudo lsof -i -P -n | grep LISTEN`
   - kill it using `killall -9 gunicorn`
   - restart the supervisord using the command `sudo supervisorctl restart stockpickerapi_gunicorn`
+
+## Testing Helper
+- `sudo -u postgres pg_dump -c stockpicker > 16may2022.sql`
+- `scp -i aws2techtuft.pem ubuntu@techtuft.com:16may2022.sql ./`
+- `psql -U postgres`
+- `drop database stockpicker;`
+- `create database stockpicker;`
+- `psql -U postgres -d stockpicker < 16may2022.sql`

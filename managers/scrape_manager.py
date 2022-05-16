@@ -129,7 +129,6 @@ class ScrapeManager:
         return ScrapeMCResponse(success=True, message="Successfully scraped data")
 
     def get_symbol(self, stock_details_url):
-        print(stock_details_url)
         try:
             if stock_details_url is None:
                 return None
@@ -248,3 +247,18 @@ class ScrapeManager:
             message="Sectorial indices fetched successfully",
             sectorial_indices=[SectorialIndex(**sectorial_index) for _, sectorial_index in unique_indices.items()]
         )
+
+    def get_volume_from_stock_details_url(self, stock_details_url):
+        try:
+            response = self.session.get(stock_details_url, headers=Constants.USER_AGENT)
+            if response.status_code == 200:
+                soup_content = BeautifulSoup(response.content, Constants.HTML_PARSER)
+                volume_div = soup_content.find('div', attrs={'id': 'nse_vol'})
+                if volume_div is None:
+                    volume_div = soup_content.find('div', attrs={'id': 'bse_vol'})
+                volume_text = volume_div.text.strip()
+                volume = volume_text.replace(",", "")
+                return int(volume)
+        except Exception as e:
+            logging.getLogger().warning(f"Couldn't get volume for {stock_details_url}. Error: {e}")
+            return None

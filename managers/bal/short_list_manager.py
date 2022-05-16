@@ -1,4 +1,5 @@
 import logging
+import threading
 import uuid
 from datetime import datetime, timedelta
 from sqlalchemy.exc import IntegrityError
@@ -58,7 +59,8 @@ class ShortListManager:
                 stock_names.symbol, 
                 stock_names.stock_name, 
                 stock_names.details_url, 
-                counter.stock_name_repetitions 
+                counter.stock_name_repetitions,
+                shortlisted_stocks.volume
             FROM shortlisted_stocks 
             JOIN stock_names ON shortlisted_stocks.stock_id = stock_names.id 
             LEFT OUTER JOIN sectors ON stock_names.sector_id  = sectors.id 
@@ -77,6 +79,7 @@ class ShortListManager:
             ).all():
                 price_action_ids = short_list_details[0]
                 is_intraday_allowed = short_list_details[1]
+                volume = short_list_details[8]
                 sector_name = short_list_details[2] if short_list_details[2] else None
                 sector_url = short_list_details[3] if short_list_details[3] else None
                 symbol = short_list_details[4] if short_list_details[4] else ""
@@ -97,7 +100,8 @@ class ShortListManager:
                     stock_sector_name=sector_name,
                     stock_sector_url=sector_url,
                     price_actions=price_actions,
-                    stock_name_repetitions=stock_name_repetitions
+                    stock_name_repetitions=stock_name_repetitions,
+                    volume=volume
                 )
                 short_listed_stocks_resp.append(short_listed_stock_resp)
             return short_listed_stocks_resp
@@ -144,6 +148,7 @@ class ShortListManager:
         # day_minus_two = current_date - timedelta(days=2)
         # day_minus_three = current_date - timedelta(days=3)
         # Get the list of stock names and their price actions for day_minus_one
+        conditions_met_on = None
         try:
             stock_names_day_one, day_one = self.__get_stocks_for_the_day(current_date)
             next_date = day_one - timedelta(days=1)
@@ -205,9 +210,16 @@ class ShortListManager:
                                               str(price_action_three.id)],
                             conditions_met_on=price_action_one.price_date,
                         )
+                        conditions_met_on = price_action_one.price_date
                         self.db_connection.add(short_list_stock)
             self.db_connection.commit()
             logging.info('Short list created for the day: {}'.format(current_date))
+            if conditions_met_on:
+                volumes_thread = threading.Thread(
+                    target=self.__get_volumes_for_shortlisted_stocks,
+                    args=(conditions_met_on,)
+                )
+                volumes_thread.start()
             return ShortListResponse(
                 success=True,
                 message=f"Successfully created the shortlist with the data up to: {str(current_date)}."
@@ -293,3 +305,37 @@ class ShortListManager:
                 if stock_symbol in allowed_intraday_stocks:
                     return True
         return False
+
+    def __get_volumes_for_shortlisted_stocks(self, conditions_met_on):
+        """
+        Retrieves the volumes of each shortlisted stock and saves it in the db
+        :param conditions_met_on:
+        :return:
+        """
+        try:
+            scrape_manager = ScrapeManager(urls_to_scrape=None)
+            short_list_stmt = text("""
+            SELECT 
+                shortlisted_stocks.id, 
+                stock_names.details_url
+            FROM shortlisted_stocks 
+            JOIN stock_names ON shortlisted_stocks.stock_id = stock_names.id 
+            WHERE shortlisted_stocks.conditions_met_on=:conditions_met_on;
+            """)
+            shortlisted_stocks = self.db_connection.execute(
+                short_list_stmt,
+                {"conditions_met_on": conditions_met_on}
+            ).all()
+            for short_list_details in shortlisted_stocks:
+                shortlist_id = short_list_details[0]
+                if stock_url := short_list_details[1]:
+                    if "http://" in stock_url:
+                        stock_url = stock_url.replace("http://", "https://")
+                    volume = scrape_manager.get_volume_from_stock_details_url(stock_url)
+                    short_list_stock_stmt = select(ShortlistedStock).where(ShortlistedStock.id == shortlist_id)
+                    short_list_stock = self.db_connection.execute(short_list_stock_stmt).scalar()
+                    short_list_stock.volume = volume
+                    self.db_connection.add(short_list_stock)
+            self.db_connection.commit()
+        except Exception as e:
+            logging.getLogger().error(f"Fetching volume failed with error: {e}")

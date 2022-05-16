@@ -49,6 +49,7 @@ class ShortlistedStock(Base):
     conditions_met_on = Column(DATE, nullable=False)
     is_intraday_allowed = Column(Boolean, default=False)
     created_at = Column(TIMESTAMP, nullable=False, server_default=text('now()'))
+    volume = Column(Numeric, nullable=False, server_default=text('0'))
     __table_args__ = (UniqueConstraint('stock_id', 'conditions_met_on', name='_shortlisted_date_uc'),)
 
 

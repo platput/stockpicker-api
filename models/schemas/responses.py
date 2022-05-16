@@ -72,6 +72,7 @@ class ShortListedStock(BaseModel):
     is_intraday_allowed: Optional[bool]
     price_actions: List[PriceActions]
     stock_name_repetitions: Optional[int]
+    volume: Optional[int]
 
 
 class ShortListedStocksResponse(BaseModel):
@@ -97,4 +98,3 @@ class SectorialIndicesResponse(BaseModel):
     success: bool
     message: str
     sectorial_indices: List[SectorialIndex]
-

@@ -14,6 +14,7 @@ class Constants:
     STOCK_DETAILS_URL = "stock_details_url"
     SECTOR_NAME = "sector_name"
     SECTOR_URL = "sector_url"
+    MIN_VOLUME_FOR_SHORTLIST = 25000
 
     # BS4 Specific
     USER_AGENT = {'User-Agent': 'Mozilla/5.0'}
